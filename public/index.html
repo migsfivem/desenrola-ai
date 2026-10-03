@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DESENROLA.AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        /* Tipografia Arredondada e Fluida */
+        *, *::before, *::after {
+            cursor: none !important; /* Força o escondimento do cursor nativo em TODOS os elementos */
+        }
+
+        body { 
+            background-color: #121214; 
+            color: #e1e1e6; 
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .hide { display: none !important; }
+        .glass { background: rgba(41, 41, 46, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        /* Cursor Personalizado Arredondado e Fluido */
+        #custom-cursor {
+            width: 18px;
+            height: 18px;
+            background: #22c55e;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.15s ease-out, background-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
+            transform: translate(-50%, -50%);
+        }
+
+        /* Efeito do cursor ao passar por elementos interativos */
+        .cursor-hover #custom-cursor {
+            transform: translate(-50%, -50%) scale(1.8);
+            background: #4ade80;
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.8);
+        }
+
+        /* Animação do Toast Fluído */
+        @keyframes slideDown {
+            from { transform: translate(-50%, -100%); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        .toast-animate { animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Cursor Customizado -->
+    <div id="custom-cursor"></div>
+
+    <!-- Notificação Flutuante Fluída (Toast) -->
+    <div id="toast" class="hide fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-[#29292e] text-white border border-green-500/30 px-6 py-3.5 rounded-full shadow-2xl flex items-center gap-3.5 toast-animate border-l-4 border-l-green-500 min-w-[290px]">
+        <div class="w-7 h-7 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-xs font-bold shrink-0">⚡</div>
+        <div>
+            <span class="text-[11px] tracking-wider font-extrabold text-green-400 block -mb-0.5 uppercase">DESENROLA.AI</span>
+            <p id="toast-message" class="text-xs font-medium text-gray-200"></p>
+        </div>
+    </div>
+
+    <!-- Container Principal do App -->
+    <div class="w-full max-w-md h-[780px] bg-[#202024] rounded-3xl shadow-2xl overflow-hidden relative flex flex-col border border-gray-700">
+        
+        <!-- Header com Nome Fluído e Arredondado -->
+        <header class="p-5 border-b border-gray-800 text-center">
+            <h1 class="text-2xl font-extrabold tracking-wider bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent uppercase">
+                ⚡ DESENROLA.AI
+            </h1>
+        </header>
+
+        <!-- Tela 1: Upload -->
+        <main id="upload-screen" class="flex-1 overflow-y-auto p-5 flex flex-col gap-6">
+            <div class="text-center">
+                <h2 class="text-lg font-semibold mb-1">Travou no papo?</h2>
+                <p class="text-xs text-gray-400">Manda o print que a gente desenrola a melhor resposta.</p>
+            </div>
+
+            <input type="file" id="file-input" accept="image/*" class="hide" onchange="handleImageSelect(event)">
+
+            <div onclick="document.getElementById('file-input').click()" id="dropzone" class="border-2 border-dashed border-gray-600 rounded-2xl p-8 flex flex-col items-center justify-center text-gray-400 hover:border-green-500 transition group">
+                <i class="fa-solid fa-image text-4xl mb-3 text-gray-500 group-hover:text-green-400 transition"></i>
+                <span id="dropzone-text" class="text-sm font-medium">Toque para enviar o print</span>
+            </div>
+
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-medium text-gray-300">Contexto (Opcional)</label>
+                <textarea id="context-input" class="bg-[#121214] border border-gray-700 rounded-xl p-3 text-sm focus:outline-none focus:border-green-500 text-white resize-none" rows="2" placeholder="Ex: A gente se conheceu ontem..."></textarea>
+            </div>
+
+            <button onclick="startAnalysis()" class="mt-auto w-full bg-green-500 hover:bg-green-600 text-gray-900 font-bold py-3.5 px-4 rounded-xl transition flex justify-center items-center gap-2 shadow-lg shadow-green-500/10">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Analisar Conversa
+            </button>
+        </main>
+
+        <!-- Tela 2: Loading -->
+        <main id="loading-screen" class="hide flex-1 p-5 flex flex-col items-center justify-center">
+            <div class="animate-spin text-green-400 text-4xl mb-4">
+                <i class="fa-solid fa-circle-notch"></i>
+            </div>
+            <p class="text-gray-300 font-medium text-sm">Lendo o clima da conversa...</p>
+        </main>
+
+        <!-- Tela 3: Resultados -->
+        <main id="result-screen" class="hide flex-1 overflow-y-auto p-5 flex flex-col gap-4 pb-10">
+            <div class="glass p-3.5 rounded-2xl flex items-start gap-3">
+                <div class="bg-gray-800/80 p-2 rounded-xl text-green-400"><i class="fa-solid fa-magnifying-glass"></i></div>
+                <div>
+                    <h3 class="font-semibold text-[11px] text-gray-400 uppercase tracking-wider">Resumo da situação</h3>
+                    <p id="resumo-texto" class="text-xs text-gray-300 mt-1 leading-relaxed"></p>
+                </div>
+            </div>
+
+            <h3 class="font-semibold text-gray-300 text-sm mt-1">Sugestões:</h3>
+            <div class="flex flex-col gap-3" id="suggestions-container"></div>
+
+            <button onclick="resetApp()" class="mt-4 w-full bg-transparent border border-gray-600 text-gray-300 hover:bg-gray-800 font-bold py-3 px-4 rounded-xl transition text-sm">
+                Analisar outro print
+            </button>
+        </main>
+    </div>
+
+    <script>
+        let imageFile = null;
+        let toastTimeout = null;
+
+        // Lógica do Cursor Customizado Fluído
+        const cursor = document.getElementById('custom-cursor');
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        // Efeito visual ampliado no cursor ao passar por elementos interativos ou campos de texto
+        document.addEventListener('mouseover', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.closest('#dropzone') || e.target.closest('button')) {
+                document.body.classList.add('cursor-hover');
+            } else {
+                document.body.classList.remove('cursor-hover');
+            }
+        });
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            
+            toastMsg.innerText = message;
+            toast.classList.remove('hide');
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('hide');
+            }, 3000);
+        }
+
+        function handleImageSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                imageFile = file;
+                document.getElementById('dropzone-text').innerText = "Print: " + file.name;
+                document.getElementById('dropzone').classList.add('border-green-500', 'text-green-500');
+                showToast("Print selecionado com sucesso!");
+            }
+        }
+
+        async function startAnalysis() {
+            if (!imageFile) {
+                showToast("Pô, manda o print primeiro!");
+                return;
+            }
+
+            document.getElementById('upload-screen').classList.add('hide');
+            document.getElementById('loading-screen').classList.remove('hide');
+
+            const formData = new FormData();
+            formData.append('imagem', imageFile);
+            formData.append('contexto', document.getElementById('context-input').value);
+
+            try {
+                const response = await fetch('/api/analisar', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showToast(data.erro || "Erro ao processar imagem.");
+                    resetApp();
+                    return;
+                }
+
+                document.getElementById('resumo-texto').innerText = data.resumo;
+
+                const container = document.getElementById('suggestions-container');
+                container.innerHTML = '';
+
+                data.sugestoes.forEach(res => {
+                    const safeText = res.texto.replace(/'/g, "\\'");
+                    container.innerHTML += `
+                        <div class="bg-[#29292e] border border-gray-700/80 rounded-2xl p-4 flex justify-between items-center hover:border-green-500/50 transition">
+                            <div class="pr-3">
+                                <span class="text-[10px] uppercase font-bold text-green-400 block mb-1">
+                                    <i class="fa-solid ${res.icone || 'fa-comment'} mr-1"></i>${res.categoria}
+                                </span>
+                                <p class="text-sm font-medium text-white leading-snug">"${res.texto}"</p>
+                            </div>
+                            <button onclick="copyToClipboard('${safeText}')" class="bg-gray-800 hover:bg-green-500 hover:text-gray-900 text-gray-300 w-10 h-10 rounded-full flex items-center justify-center transition shrink-0">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('loading-screen').classList.add('hide');
+                document.getElementById('result-screen').classList.remove('hide');
+
+            } catch (error) {
+                showToast("Erro de conexão com o servidor.");
+                resetApp();
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Resposta copiada!");
+            }).catch(() => {
+                const el = document.createElement('textarea');
+                el.value = text;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+                showToast("Resposta copiada!");
+            });
+        }
+
+        function resetApp() {
+            imageFile = null;
+            document.getElementById('file-input').value = '';
+            document.getElementById('context-input').value = '';
+            document.getElementById('dropzone-text').innerText = "Toque para enviar o print";
+            document.getElementById('dropzone').classList.remove('border-green-500', 'text-green-500');
+            document.getElementById('result-screen').classList.add('hide');
+            document.getElementById('loading-screen').classList.add('hide');
+            document.getElementById('upload-screen').classList.remove('hide');
+        }
+    </script>
+</body>
+</html>
