@@ -50,6 +50,18 @@
             to { transform: translate(-50%, 0); opacity: 1; }
         }
         .toast-animate { animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        /* Esconde o cursor por padrão em telas sensíveis ao toque */
+@media (hover: none) and (pointer: coarse) {
+  #custom-cursor {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  /* Classe que será ativada apenas durante o toque */
+  #custom-cursor.active-touch {
+    opacity: 1;
+  }
+}
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -144,6 +156,31 @@
                 document.body.classList.add('cursor-hover');
             } else {
                 document.body.classList.remove('cursor-hover');
+                const cursor = document.getElementById('custom-cursor');
+
+// Detecta o momento que o dedo encosta na tela
+window.addEventListener('touchstart', (e) => {
+  const touch = e.touches[0];
+  if (touch) {
+    cursor.style.left = `${touch.clientX}px`;
+    cursor.style.top = `${touch.clientY}px`;
+    cursor.classList.add('active-touch');
+  }
+});
+
+// Acompanha o movimento do dedo na tela
+window.addEventListener('touchmove', (e) => {
+  const touch = e.touches[0];
+  if (touch) {
+    cursor.style.left = `${touch.clientX}px`;
+    cursor.style.top = `${touch.clientY}px`;
+  }
+});
+
+// Esconde a bolinha verde quando o dedo sai da tela
+window.addEventListener('touchend', () => {
+  cursor.classList.remove('active-touch');
+});
             }
         });
 
